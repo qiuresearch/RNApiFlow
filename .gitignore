@@ -1,6 +1,11 @@
 # Project specific files and folders
 test_*
 checkpoints/
+wandb/
+outputs/
+logs/
+ready_to_train/
+check_set/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
