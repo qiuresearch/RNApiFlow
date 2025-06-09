@@ -1,0 +1,11 @@
+inference:
+  ckpt_path: checkpoints/RNA3DB.ckpt
+  input_dir: Inputs
+  output_dir: Predictions
+  name: 2oiu_P
+  num_gpus: 1
+  interpolant:
+    sampling:
+      num_timesteps: 50
+  samples:
+    samples_per_sequence: 2
