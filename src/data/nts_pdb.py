@@ -18,6 +18,9 @@ from Bio.PDB import PDBParser
 import numpy as np
 
 from src.data import nts_constants
+from src import utils
+
+ilogger = utils.get_pylogger(__name__)
 
 FeatureDict = Mapping[str, np.ndarray]
 ModelOutput = Mapping[str, Any]  # Is a nested dict.
@@ -48,6 +51,12 @@ class NucleicAcid:
     # B-factors, or temperature factors, of each residue (in sq. angstroms units),
     # representing the displacement of the residue from its ground truth mean value.
     b_factors: np.ndarray  # [num_res, num_atom_type]
+
+    def __get_item__(self, key: str) -> np.ndarray:
+        """Allows for dict-like access to the attributes."""
+        if not hasattr(self, key):
+            raise KeyError(f'Key {key} not found in NucleicAcid.')
+        return getattr(self, key)
 
 
 def from_pdb_string(
@@ -104,13 +113,21 @@ def from_pdb_string(
             res_b_factors = np.zeros((nts_constants.atom28_names_num,))
             for atom in res:
                 if atom.name not in nts_constants.atom28_names:
+                    ilogger.debug(
+                        f'Ignoring unknown atom {atom.name} in residue {res.resname} '
+                        f'at chain {chain.id} and residue index {res.id[1]}.'
+                    )
                     continue
                 pos[nts_constants.atom28_indices_by_name[atom.name]] = atom.coord
                 mask[nts_constants.atom28_indices_by_name[atom.name]] = 1.
                 res_b_factors[nts_constants.atom28_indices_by_name[atom.name]] = atom.bfactor
 
+            # If no known atom positions are reported for the residue then skip it.
             if np.sum(mask) < 0.5:
-                # If no known atom positions are reported for the residue then skip it.
+                ilogger.debug(
+                    f'Skipping residue {res.resname} at chain {chain.id} and '
+                    f'residue index {res.id[1]} because no known atoms are present.'
+                )
                 continue
             restype.append(restype_idx)
             atom_positions.append(pos)
@@ -146,16 +163,16 @@ def nucleicacid_to_target_feats(nuclacid) -> dict:
     # 2. Initialize chain features
     nts_feats = {
         "restype": restype,
-        "all_atom_positions": atom_positions[:, :NUM_NA_RESIDUE_ATOMS],
-        "all_atom_mask": atom_mask[:, :NUM_NA_RESIDUE_ATOMS],
+        "all_atom_positions": atom_positions, #[:, :NUM_NA_RESIDUE_ATOMS],
+        "all_atom_mask": atom_mask, #[:, :NUM_NA_RESIDUE_ATOMS],
         "atom_deoxy": torch.zeros(num_res, dtype=torch.bool),  # all RNA
     }
 
     # 3. Data transforms
-    nts_feats = data_transform.make_atom23_masks(nts_feats)
-    data_transform.atom23_list_to_atom28_list(
-        nts_feats, ["all_atom_positions", "all_atom_mask"], inplace=True
-    )
+    # nts_feats = data_transform.make_atom23_masks(nts_feats)
+    # data_transform.atom23_list_to_atom28_list(
+    #     nts_feats, ["all_atom_positions", "all_atom_mask"], inplace=True
+    # )
     nts_feats = data_transform.atom28_to_frames(nts_feats)
     nts_feats = data_transform.atom28_to_torsion_angles()(nts_feats)
 
@@ -214,7 +231,6 @@ def to_pdb(nuclacid: NucleicAcid) -> str:
     """
     restypes = nts_constants.restypes + ["X"]
     res_1to3 = lambda r: nts_constants.restypes_1to3.get(restypes[r], "UNK")
-    atom_types = nts_constants.atom28_names
 
     pdb_lines = []
 
@@ -236,7 +252,7 @@ def to_pdb(nuclacid: NucleicAcid) -> str:
     for i in range(restype.shape[0]):
         res_name_3 = res_1to3(restype[i])
         for atom_name, pos, mask, b_factor in zip(
-            atom_types, atom_positions[i], atom_mask[i], b_factors[i]
+            nts_constants.atom28_names, atom_positions[i], atom_mask[i], b_factors[i]
         ):
             if mask < 0.5:
                 continue

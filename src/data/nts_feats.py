@@ -31,7 +31,7 @@ from src.data.nts_constants import (
 from src.data.rigid_utils import Rotation, Rigid
 
 
-def feats_to_atom23(trans, rots, restypes, torsions=None):
+def feats_to_atom23_positions(trans, rots, restypes, torsions=None):
 
     backb_to_global = Rigid(
         Rotation(

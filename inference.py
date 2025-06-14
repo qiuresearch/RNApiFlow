@@ -116,7 +116,7 @@ class Sampler:
         
 
 @hydra.main(version_base=None, config_path="./configs", config_name="inference")
-def run_inference(cfg: DictConfig) -> None:
+def predict(cfg: DictConfig) -> None:
     """Run inference with the given configuration."""
 
     input_dir = cfg['inference']['input_dir']
@@ -160,4 +160,4 @@ def run_inference(cfg: DictConfig) -> None:
         # os.remove(pickle_file_path)
 
 if __name__ == '__main__':
-    run_inference()
+    predict()

@@ -1,6 +1,7 @@
 # Project specific files and folders
 test_*
 checkpoints/
+predictions/
 wandb/
 outputs/
 logs/

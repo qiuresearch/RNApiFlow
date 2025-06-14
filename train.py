@@ -30,19 +30,22 @@ class Experiment:
     def train(self):
         callbacks = []
 
+        date_string =  datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
         if self._exp_cfg.debug:
             ilogger.info("Debug mode.")
             wandb_logger = None
             self._exp_cfg.num_devices = 1
             self._data_cfg.loader.num_workers = 0
         else:
+            self._exp_cfg.wandb.name = date_string
             wandb_logger = WandbLogger(**self._exp_cfg.wandb,)
 
             # Checkpoint directory
             ckpt_dir = self._exp_cfg.checkpoints.dirpath
 
             if self._exp_cfg.warm_start is None:
-                ckpt_dir = os.path.join(ckpt_dir, f'{wandb_logger.experiment.id}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}')
+                ckpt_dir = os.path.join(ckpt_dir, f'{date_string}_{wandb_logger.experiment.id}')
                 self._exp_cfg.checkpoints.dirpath = ckpt_dir
                 os.makedirs(ckpt_dir, exist_ok=True)
             # else:

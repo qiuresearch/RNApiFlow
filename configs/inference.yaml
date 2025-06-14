@@ -5,9 +5,9 @@ hydra:
     dir: logs
 inference:
   ckpt_path: checkpoints/RNA3DB.ckpt
-  input_dir: Inputs
-  output_dir: Predictions
-  name: Dummy
+  input_dir: inputs
+  output_dir: predictions
+  name: place_holder
   num_gpus: 1
   interpolant:
     sampling:

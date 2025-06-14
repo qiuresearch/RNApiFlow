@@ -276,12 +276,18 @@ class Interpolant:
         pred_rotmats_1 = model_out['pred_rotmats']
         pred_torsions_1 = model_out['pred_torsions']
         
+
+        # print the shapes of pred_* matrices
+        # print(f"pred_trans_1 shape: {pred_trans_1.shape}")
+        # print(f"pred_rotmats_1 shape: {pred_rotmats_1.shape}")
+        # print(f"pred_torsions_1 shape: {pred_torsions_1.shape}")
+
         is_na_residue_mask = torch.ones(num_batch, num_res, device=self._device).bool()
         assert res_mask.shape == is_na_residue_mask.shape, "Shape mismatch between NA masks"
 
         # Convert to atom representation for output
         if map_dict is not None:
-            pred_bb_atoms_23, _ = rna_all_atom.feats_to_atom23(
+            pred_bb_atoms_23, _ = rna_all_atom.feats_to_atom23_positions(
                                 pred_trans_1, pred_rotmats_1, 
                                 map_dict['restype'],
                                 torsions=pred_torsions_1,

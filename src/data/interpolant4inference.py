@@ -135,7 +135,7 @@ class Interpolant:
 
         assert res_mask.shape == is_na_residue_mask.shape, "Shape mismatch between NA masks"
 
-        pred_bb_atoms_23,_ = rna_all_atom.feats_to_atom23(
+        pred_bb_atoms_23,_ = rna_all_atom.feats_to_atom23_positions(
                             pred_trans_1, pred_rotmats_1, 
                             map_dict['restype'],
                             torsions=pred_torsions_1,

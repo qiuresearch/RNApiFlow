@@ -383,6 +383,17 @@ map_id_to_out_restype = tuple(
     for i in range(len(restypes_with_x_g))
 )
 
+def sequence_to_restype(
+    sequence: str,
+    mapping: Mapping[str, int],
+    map_unknown_to_x: bool = False) -> np.ndarray:
+    """Maps the given sequence into a restype array."""
+    pass
+
+    num_entries = max(mapping.values()) + 1
+
+
+    
 def sequence_to_onehot(
     sequence: str,
     mapping: Mapping[str, int],

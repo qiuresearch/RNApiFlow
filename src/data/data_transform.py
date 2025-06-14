@@ -42,6 +42,7 @@ def batched_gather(data, inds, dim=0, no_batch_dims=0):
 def get_one_hot(fastaseq):
     
     nucleotide_map = {'A': 0, 'U': 1, 'G': 2, 'C': 3}
+    nucleotide_map = {'A': 0, 'G': 1, 'C': 2, 'U': 3}
     
     try:
         indices = [nucleotide_map[n] for n in fastaseq.upper()]
@@ -61,22 +62,23 @@ def sequence_to_tensor(sequence):
     
     return tensor_idx
 
-def genMap(res_idx):
+def gen_atom_imap(res_idx):
 
     restype_atom28_to_atom23 = []
 
-    for rt in rc.restypes:
-        atom_names = rc.atom23_names_by_resname[rc.restypes_1to3[rt]]
+    for restype in rc.restypes:
+        atom23_names = rc.atom23_names_by_resname[rc.restypes_1to3[restype]]
         
-        atom_name_to_idx23 = {name: i for i, name in enumerate(atom_names)}
+        atom_name_to_idx23 = {name: i for i, name in enumerate(atom23_names)}
         
         restype_atom28_to_atom23.append(
             [
-                (atom_name_to_idx23[name] if name in atom_name_to_idx23 else 0)
+                (atom_name_to_idx23[name] if name in atom23_names else 0)
                 for name in rc.atom28_names
             ]
         )
-
+        
+    # add the unknown residue type without any atoms
     restype_atom28_to_atom23.append([0] * 28)
 
     restype_atom28_to_atom23 = torch.tensor(
@@ -101,7 +103,7 @@ def make_atom_mask(rna_target, input_dir):
     
     res_idx = sequence_to_tensor(rnaseq)
 
-    atom_map = genMap(res_idx)
+    atom_map = gen_atom_imap(res_idx)
 
     onehot = get_one_hot(rnaseq)
     
@@ -239,17 +241,11 @@ def atom28_to_frames(nts, eps=1e-8):
         for chi_idx in range(1):
             if rc.chi_angles_mask[restype][chi_idx]:
                 names = rc.chi_atoms_by_resname[resname][chi_idx]
-                restype_rigidgroup_base_atom_names[
-                    restype, 9, :
-                ] = names[1:]
+                restype_rigidgroup_base_atom_names[restype, 9, :] = names[1:]
 
-    restype_rigidgroup_mask = all_atom_mask.new_zeros(
-        (*restypes.shape[:-1], 5, 10),
-    )
+    restype_rigidgroup_mask = all_atom_mask.new_zeros((*restypes.shape[:-1], 5, 10),)
     restype_rigidgroup_mask[..., 0:9] = 1
-    restype_rigidgroup_mask[..., :4, 9:] = all_atom_mask.new_tensor(
-        rc.chi_angles_mask
-    )
+    restype_rigidgroup_mask[..., :4, 9:] = all_atom_mask.new_tensor(rc.chi_angles_mask)
 
     lookuptable = rc.atom28_indices_by_name.copy()
     lookuptable[""] = 0
@@ -361,7 +357,7 @@ def atom28_to_frames(nts, eps=1e-8):
     return nts
 
 
-def get_chi_atom_indices():
+def get_chi_atom28_indices():
     """Returns atom indices needed to compute chi angles for all residue types.
 
     Returns:
@@ -371,16 +367,14 @@ def get_chi_atom_indices():
       positions indices are by default set to 0.
     """
     chi_atom_indices = []
-    for residue_name in rc.restypes:
-        residue_name = rc.restypes_1to3[residue_name]
-        residue_chi_angles = rc.chi_atoms_by_resname[residue_name]
+    for resname in rc.restypes:
+        resname = rc.restypes_1to3[resname]
+        residue_chi_angles = rc.chi_atoms_by_resname[resname]
         atom_indices = []
         for chi_angle in residue_chi_angles:
             atom_indices.append([rc.atom28_indices_by_name[atom] for atom in chi_angle])
         for _ in range(1 - len(atom_indices)):
-            atom_indices.append(
-                [0, 0, 0, 0]
-            )  # For chi angles not defined on the AA.
+            atom_indices.append([0, 0, 0, 0])  # For chi angles not defined on the AA.
         chi_atom_indices.append(atom_indices)
 
     chi_atom_indices.append([[0, 0, 0, 0]] * 1)  # For UNKNOWN residue.
@@ -600,13 +594,15 @@ def atom28_to_torsion_angles(
     )
 
     chi_atom_indices = torch.as_tensor(
-        get_chi_atom_indices(), device=restypes.device
+        get_chi_atom28_indices(), device=restypes.device
     )
 
     atom_indices = chi_atom_indices[..., restypes, :, :]
     chis_atom_pos = batched_gather(
         all_atom_positions, atom_indices, -2, len(atom_indices.shape[:-2])
     )
+
+    # print(chis_atom_pos)
 
     chi_angles_mask = list(rc.chi_angles_mask)
     chi_angles_mask.append([0.0])
